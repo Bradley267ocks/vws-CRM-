@@ -1,0 +1,31 @@
+{
+  "entities": {
+    "Client": {
+      "title": "Client",
+      "description": "Represents a service client with payment tracking info.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Full name of the client" },
+        "businessName": { "type": "string", "description": "Name of the client's business" },
+        "phone": { "type": "string", "description": "Contact phone for WhatsApp" },
+        "email": { "type": "string", "format": "email", "description": "Email address" },
+        "servicePackage": { "type": "string", "description": "The service being provided" },
+        "monthlyAmount": { "type": "number", "description": "Monthly fee in local currency" },
+        "status": { "type": "string", "enum": ["Paid", "Pending", "Overdue"], "description": "Current payment status" },
+        "contractStartDate": { "type": "string", "format": "date-time", "description": "When the contract started" },
+        "nextPaymentDueDate": { "type": "string", "format": "date-time", "description": "When the next payment is due" },
+        "notes": { "type": "string", "description": "Internal notes" },
+        "ownerId": { "type": "string", "description": "UID of the user who owns this client record" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "phone", "monthlyAmount", "status", "ownerId"]
+    }
+  },
+  "firestore": {
+    "/clients": {
+      "schema": "Client",
+      "description": "Root collection for all client records"
+    }
+  }
+}

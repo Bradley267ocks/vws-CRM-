@@ -1,0 +1,78 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 1. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helpers ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // --- Entity Validations ---
+    function isValidClient(data) {
+      return data.keys().hasAll(['name', 'phone', 'monthlyAmount', 'status', 'ownerId', 'createdAt', 'updatedAt'])
+        && data.keys().size() <= 11 // name, phone, monthlyAmount, status, ownerId, createdAt, updatedAt + (businessName, email, servicePackage, notes)
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 100
+        && data.phone is string && data.phone.size() >= 7 && data.phone.size() <= 20
+        && data.monthlyAmount is number && data.monthlyAmount >= 0
+        && data.status in ['Paid', 'Pending', 'Overdue']
+        && data.ownerId == request.auth.uid
+        && (data.get('businessName', null) == null || (data.businessName is string && data.businessName.size() <= 200))
+        && (data.get('email', null) == null || (data.email is string && data.email.size() <= 200))
+        && (data.get('servicePackage', null) == null || (data.servicePackage is string && data.servicePackage.size() <= 200))
+        && (data.get('notes', null) == null || (data.notes is string && data.notes.size() <= 2000));
+    }
+
+    // --- Collections ---
+    match /clients/{clientId} {
+      // Secure List Queries
+      allow list: if isVerified() && resource.data.ownerId == request.auth.uid;
+      allow get: if isVerified() && existing().ownerId == request.auth.uid;
+      
+      allow create: if isVerified() 
+        && isValidId(clientId)
+        && (incoming().keys().size() >= 7 && incoming().keys().size() <= 11)
+        && isValidClient(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+
+      allow update: if isVerified()
+        && isOwner(existing().ownerId)
+        && isValidId(clientId)
+        && isValidClient(incoming())
+        && incoming().ownerId == existing().ownerId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          // Action: Update details or status
+          incoming().diff(existing()).affectedKeys().hasAny(['name', 'phone', 'monthlyAmount', 'status', 'businessName', 'email', 'servicePackage', 'notes', 'updatedAt'])
+          && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'phone', 'monthlyAmount', 'status', 'businessName', 'email', 'servicePackage', 'notes', 'updatedAt'])
+        );
+
+      allow delete: if isVerified() && isOwner(existing().ownerId);
+    }
+  }
+}

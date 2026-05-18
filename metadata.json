@@ -1,0 +1,8 @@
+{
+  "name": "CRM for Vibrant Web Solutions Clients",
+  "description": "A modern, lightweight internal CRM for tracking website clients, projects, payments, and onboarding with manual WhatsApp reminders.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
